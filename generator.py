@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import random
+import functools
 import deserializer
 from sentence import Sentence
 
@@ -27,8 +28,8 @@ class SentenceGenerator(object):
         self._ngrams = ngrams
         self.__generator = random.SystemRandom()
 
-    def generate_word(self, sentence):
-        """Generates the next word in a sentence.
+    def generate_random_word(self, sentence):
+        """Generates the next word in a sentence at random.
 
         Args:
             sentence: Sentence.
@@ -36,20 +37,64 @@ class SentenceGenerator(object):
         Returns:
             Tuple of (random word, probability of it occuring).
         """
+        return self._generate_word(sentence, self._get_random_word)
+
+    def generate_most_likely_word(self, sentence):
+        """Generates the next most likely word in a sentence.
+
+        Args:
+            sentence: Sentence.
+
+        Returns:
+            Tuple of (most likely word, probability of it occuring).
+        """
+        return self._generate_word(sentence, self._get_most_likely_word)
+
+    def _generate_word(self, sentence, word_generator):
+        """Generates the next word in a sentence.
+
+        Args:
+            sentence: Sentence.
+            word_generator: Function used to generate word.
+
+        Returns:
+            Tuple of (generated word, probability of it occuring).
+        """
         word_count = len(sentence)
         for ngram in reversed(self._ngrams):
             past_states_required = ngram.n - 1
             if word_count >= past_states_required:
                 past_states = sentence.get_last(past_states_required)
                 try:
-                    return self._get_word(past_states, ngram)
+                    return word_generator(past_states, ngram)
                 except NoWordFound:
                     continue
 
         # Should not be reached.
         raise NoWordFound
 
-    def _get_word(self, past_states, ngram):
+    def _get_most_likely_word(self, past_states, ngram):
+        """Gets a random word given the current state and n-gram using the
+        specified conditional probabilities.
+
+        Args:
+            past_states: List of past states.
+            ngram: N-gram.
+
+        Returns:
+            Tuple of (random word, probability of it occuring).
+        """
+        possible_outcomes = ((state, ngram.get(*state))
+                             for state in ngram.yield_keys(*past_states))
+        if not possible_outcomes:
+            raise NoWordFound("N-gram has no possible outcome")
+
+        most_likely_outcome, prob = functools.reduce(
+            lambda x, y: x if x[1] > y[1] else y,
+            possible_outcomes)
+        return (most_likely_outcome[-1], prob)
+
+    def _get_random_word(self, past_states, ngram):
         """Gets a random word given the current state and n-gram using the
         specified conditional probabilities.
 
@@ -86,7 +131,7 @@ if __name__ == "__main__":
 
     total_prob = 1.0
     while not sentence.complete:
-        word, prob = generator.generate_word(sentence)
+        word, prob = generator.generate_random_word(sentence)
         sentence.add(word)
         total_prob *= prob
 

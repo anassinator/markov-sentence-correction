@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 
+import os
+import pickle
+
 
 class Vocabulary(object):
 
@@ -127,7 +130,20 @@ class MarkovChain(object):
         return chain
 
 
-vocabulary = Vocabulary("data/vocab.txt")
-unigrams = MarkovChain.from_file("data/unigram_counts.txt", 1)
-bigrams = MarkovChain.from_file("data/bigram_counts.txt", 2)
-trigrams = MarkovChain.from_file("data/trigram_counts.txt", 3)
+def get_vocabulary():
+    """Returns vocabulary to use."""
+    return Vocabulary("data/vocab.txt")
+
+
+def get_ngrams():
+    ngrams_file = "data/ngrams.p"
+    if not os.path.isfile(ngrams_file):
+        ngrams = [
+            MarkovChain.from_file("data/unigram_counts.txt", 1),
+            MarkovChain.from_file("data/bigram_counts.txt", 2),
+            MarkovChain.from_file("data/trigram_counts.txt", 3)
+        ]
+        pickle.dump(ngrams, open(ngrams_file, "wb"))
+    else:
+        ngrams = pickle.load(open(ngrams_file, "rb"))
+    return ngrams

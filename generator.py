@@ -17,7 +17,7 @@ class SentenceGenerator(object):
 
     """Sentence generator."""
 
-    def __init__(self, *chains):
+    def __init__(self, chains):
         """Constructs a SentenceGenerator.
 
         Args:
@@ -122,10 +122,8 @@ def generate(vocabulary, generator):
 
 
 if __name__ == "__main__":
-    vocabulary = deserializer.vocabulary
-    generator = SentenceGenerator(deserializer.unigrams,
-                                  deserializer.bigrams,
-                                  deserializer.trigrams)
+    vocabulary = deserializer.get_vocabulary()
+    generator = SentenceGenerator(deserializer.get_ngrams())
 
     sentence, total_prob = generate(vocabulary, generator)
     print(sentence)

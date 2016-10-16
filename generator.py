@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import random
-import functools
 import deserializer
 from sentence import Sentence
 
@@ -18,15 +17,15 @@ class SentenceGenerator(object):
 
     """Sentence generator."""
 
-    def __init__(self, *ngrams):
+    def __init__(self, *chains):
         """Constructs a SentenceGenerator.
 
         Args:
-            ngrams: Ordered list of n-grams. Unigram should be at index 0,
+            chains: Ordered list of n-grams. Unigram should be at index 0,
                     followed by bigram at index 1, and so on.
         """
-        self._ngrams = ngrams
-        self.__generator = random.SystemRandom()
+        self._chains = chains
+        self.__generator = random
 
     def generate_random_word(self, sentence):
         """Generates the next word in a sentence at random.
@@ -61,73 +60,57 @@ class SentenceGenerator(object):
             Tuple of (generated word, probability of it occuring).
         """
         word_count = len(sentence)
-        for ngram in reversed(self._ngrams):
-            past_states_required = ngram.n - 1
-            if word_count >= past_states_required:
-                past_states = sentence.get_last(past_states_required)
+        for chain in reversed(self._chains):
+            present_states_required = chain.n - 1
+            if word_count >= present_states_required:
+                present_states = sentence.get_last(present_states_required)
                 try:
-                    return word_generator(past_states, ngram)
+                    return word_generator(present_states, chain)
                 except NoWordFound:
                     continue
 
         # Should not be reached.
         raise NoWordFound
 
-    def _get_most_likely_word(self, past_states, ngram):
+    def _get_random_word(self, present_states, chain):
         """Gets a random word given the current state and n-gram using the
         specified conditional probabilities.
 
         Args:
-            past_states: List of past states.
-            ngram: N-gram.
+            present_states: List of present states.
+            chain: Markov chain.
 
         Returns:
             Tuple of (random word, probability of it occuring).
         """
-        possible_outcomes = ((state, ngram.get(*state))
-                             for state in ngram.yield_keys(*past_states))
-        if not possible_outcomes:
-            raise NoWordFound("N-gram has no possible outcome")
-
-        most_likely_outcome, prob = functools.reduce(
-            lambda x, y: x if x[1] > y[1] else y,
-            possible_outcomes)
-        return (most_likely_outcome[-1], prob)
-
-    def _get_random_word(self, past_states, ngram):
-        """Gets a random word given the current state and n-gram using the
-        specified conditional probabilities.
-
-        Args:
-            past_states: List of past states.
-            ngram: N-gram.
-
-        Returns:
-            Tuple of (random word, probability of it occuring).
-        """
-        possible_outcomes = [(state, ngram.get(*state))
-                             for state in ngram.yield_keys(*past_states)]
-        if not possible_outcomes:
-            raise NoWordFound("N-gram has no possible outcome")
+        if present_states not in chain:
+            raise NoWordFound("Markov chain has no possible outcome")
 
         # Normalize since the conditional probabilities are not guaranteed to
         # sum up to 1.
+        possible_outcomes = list(chain.yield_future_states(present_states))
         normalization_factor = sum(prob for _, prob in possible_outcomes)
         rand = self.__generator.random() * normalization_factor
         for outcome, prob in possible_outcomes:
             if rand <= prob:
-                return (outcome[-1], prob)
+                return (outcome, prob)
             rand -= prob
 
         # This should not be possible.
         raise RuntimeError("Could not generate any word from the given set...")
 
 
-if __name__ == "__main__":
-    sentence = Sentence(deserializer.vocabulary)
-    generator = SentenceGenerator(deserializer.unigrams,
-                                  deserializer.bigrams,
-                                  deserializer.trigrams)
+def generate(vocabulary, generator):
+    """Generates a sentence given a sentence generator.
+
+    Args:
+        vocabulary: Vocabulary to use.
+        generator: Sentence generator.
+
+    Returns:
+        Tuple of (generated sentence, total probability).
+    """
+    sentence = Sentence(vocabulary)
 
     total_prob = 1.0
     while not sentence.complete:
@@ -135,5 +118,15 @@ if __name__ == "__main__":
         sentence.add(word)
         total_prob *= prob
 
+    return (sentence, total_prob)
+
+
+if __name__ == "__main__":
+    vocabulary = deserializer.vocabulary
+    generator = SentenceGenerator(deserializer.unigrams,
+                                  deserializer.bigrams,
+                                  deserializer.trigrams)
+
+    sentence, total_prob = generate(vocabulary, generator)
     print(sentence)
     print("Probability: ", total_prob)

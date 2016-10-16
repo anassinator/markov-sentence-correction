@@ -44,7 +44,7 @@ class Sentence(object):
         Args:
             n: Number of last words to get from the sentence.
         """
-        return self._word_list[-n:]
+        return tuple(self._word_list[-n:])
 
     def __str__(self):
         """Returns a string representation of the sentence."""

@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from abc import ABCMeta
-
 
 class Vocabulary(object):
 
@@ -41,111 +39,95 @@ class Vocabulary(object):
         return self._dictionary[i - 1]
 
 
-class NGramModel(object, metaclass=ABCMeta):
+class MarkovChain(object):
 
-    """N-gram model."""
+    """Markov chain."""
 
-    def __init__(self, fname, n):
-        """Constructs an NGramModel from a file.
+    def __init__(self, n):
+        """Constructs a MarkovChain.
+
+        Args:
+            n: Order of the Markov chain.
+        """
+        self._chain = {}
+        self._n = n
+
+    def __contains__(self, present_state):
+        """Returns whether the current state is modeled by this Markov chain or
+        not.
+
+        Args:
+            present_state: Tuple of present states.
+
+        Returns:
+            Whether the present state is modeled by this chain or not.
+        """
+        return present_state in self._chain
+
+    @property
+    def n(self):
+        """Order of the Markov chain."""
+        return self._n
+
+    def set(self, present_state, future_state, prob):
+        """Adds a new link in the Markov chain.
+
+        Args:
+            present_state: Tuple of present states.
+            future_state: Future state.
+            prob: Probability of future state given present state.
+        """
+        if present_state not in self._chain:
+            self._chain[present_state] = {}
+        self._chain[present_state][future_state] = prob
+
+    def yield_future_states(self, present_state):
+        """Iterates through all possible future states given present state.
+
+        Args:
+            present_state: Tuple of present states.
+
+        Yields:
+            Tuple of (future state, its probability).
+        """
+        if present_state not in self._chain:
+            return
+
+        possible_outcomes = self._chain[present_state]
+        for future_state in possible_outcomes:
+            yield (future_state, possible_outcomes[future_state])
+
+    @classmethod
+    def from_file(cls, fname, n):
+        """Constructs a MarkovModel from a file.
 
         Args:
             fname: File name.
-            n: Number of items.
-        """
-        self._n = n
+            n: Order of the Markov chain.
 
+        Returns:
+            MarkovModel.
+        """
         with open(fname) as f:
             lines = f.readlines()
 
-        self._model = {}
+        chain = MarkovChain(n)
         for l in lines:
             if l:
                 try:
-                    *key, prob = l.split(' ')
-                    key = tuple(map(int, key))
+                    *present_state, future_state, prob = l.split(' ')
+                    present_state = tuple(map(int, present_state))
+                    future_state = int(future_state)
                     prob = 10 ** float(prob)
                 except ValueError:
                     continue
 
-                self._model[key] = prob
+                chain.set(present_state, future_state, prob)
 
-        self._keys = self._model.keys()
-
-    @property
-    def n(self):
-        """Returns the number of items in the n-gram."""
-        return self._n
-
-    def get(self, *key):
-        """Gets the probability of a certain n-gram.
-
-        Args:
-            key: Elements of the n-gram.
-
-        Returns:
-            Conditional probability of the given n-gram.
-        """
-        return self._model[key]
-
-    def yield_keys(self, *prefix):
-        """Yields keys that are prefixed by a given sequence.
-
-        Args:
-            prefix: Sequence of word indices.
-
-        Yields:
-            Key that starts with given sequence.
-        """
-        keys = self._keys
-
-        if prefix:
-            prefix_length = len(prefix)
-            keys = filter(lambda x: x[:prefix_length] == prefix, self._keys)
-
-        for k in keys:
-            yield k
-
-
-class UnigramModel(NGramModel):
-
-    """Unigram model."""
-
-    def __init__(self, fname):
-        """Constructs a UnigramModel from a file.
-
-        Args:
-            fname: File name.
-        """
-        super().__init__(fname, 1)
-
-
-class BigramModel(NGramModel):
-
-    """Bigram model."""
-
-    def __init__(self, fname):
-        """Constructs a BigramModel from a file.
-
-        Args:
-            fname: File name.
-        """
-        super().__init__(fname, 2)
-
-
-class TrigramModel(NGramModel):
-
-    """Trigram model."""
-
-    def __init__(self, fname):
-        """Constructs a TrigramModel from a file.
-
-        Args:
-            fname: File name.
-        """
-        super().__init__(fname, 3)
+        return chain
 
 
 vocabulary = Vocabulary("data/vocab.txt")
-unigrams = UnigramModel("data/unigram_counts.txt")
-bigrams = BigramModel("data/bigram_counts.txt")
-trigrams = TrigramModel("data/trigram_counts.txt")
+unigrams = MarkovChain.from_file("data/unigram_counts.txt", 1)
+bigrams = MarkovChain.from_file("data/bigram_counts.txt", 2)
+trigrams = MarkovChain.from_file("data/trigram_counts.txt", 3)

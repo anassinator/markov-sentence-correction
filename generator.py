@@ -25,7 +25,7 @@ class SentenceGenerator(object):
                     followed by bigram at index 1, and so on.
         """
         self._chains = chains
-        self.__generator = random
+        self.__generator = random.SystemRandom()
 
     def generate_random_word(self, sentence):
         """Generates the next word in a sentence at random.

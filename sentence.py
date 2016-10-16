@@ -18,7 +18,7 @@ class Sentence(object):
         """
         self._vocabulary = vocabulary
         self._word_list = [Sentence.START]
-        self._sentence = "<s>"
+        self._sentence = ""
 
     @property
     def complete(self):
@@ -32,11 +32,13 @@ class Sentence(object):
             word_index: Index of the word from the vocabulary.
         """
         self._word_list.append(word_index)
-        word = self._vocabulary.get(word_index)
-        if (word[0] not in Sentence.LEFT_SIDED_SYMBOLS and
-                self._sentence[-1] not in Sentence.RIGHT_SIDED_SYMBOLS):
-            self._sentence += ' '
-        self._sentence += word
+        if word_index != Sentence.STOP:
+            word = self._vocabulary.get(word_index)
+            if (word[0] not in Sentence.LEFT_SIDED_SYMBOLS and
+                    self._sentence and
+                    self._sentence[-1] not in Sentence.RIGHT_SIDED_SYMBOLS):
+                self._sentence += ' '
+            self._sentence += word
 
     def get_last(self, n):
         """Returns the indices of the last n words in the sentence.

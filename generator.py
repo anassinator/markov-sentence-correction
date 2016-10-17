@@ -90,10 +90,10 @@ class SentenceGenerator(object):
         # sum up to 1.
         possible_outcomes = list(chain.yield_future_states(present_states))
         normalization_factor = sum(prob for _, prob in possible_outcomes)
-        rand = self.__generator.random() * normalization_factor
+        rand = self.__generator.uniform(0, normalization_factor)
         for outcome, prob in possible_outcomes:
             if rand <= prob:
-                return (outcome, prob)
+                return (outcome, prob / normalization_factor)
             rand -= prob
 
         # This should not be possible.

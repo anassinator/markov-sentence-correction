@@ -61,7 +61,7 @@ class SentenceGenerator(object):
         """
         word_count = len(sentence)
         for chain in reversed(self._chains):
-            present_states_required = chain.n - 1
+            present_states_required = chain.order
             if word_count >= present_states_required:
                 present_states = sentence.get_last(present_states_required)
                 try:
@@ -123,7 +123,7 @@ def generate(vocabulary, generator):
 
 if __name__ == "__main__":
     vocabulary = deserializer.get_vocabulary()
-    generator = SentenceGenerator(deserializer.get_ngrams())
+    generator = SentenceGenerator(deserializer.get_all_ngrams())
 
     sentence, total_prob = generate(vocabulary, generator)
     print(sentence)

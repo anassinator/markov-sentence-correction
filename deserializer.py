@@ -8,7 +8,6 @@ class Vocabulary(object):
 
     """Vocabulary."""
 
-    @classmethod
     def __init__(self, fname):
         """Constructs a Vocabulary from a file.
 
@@ -46,14 +45,14 @@ class MarkovChain(object):
 
     """Markov chain."""
 
-    def __init__(self, n):
+    def __init__(self, order):
         """Constructs a MarkovChain.
 
         Args:
-            n: Order of the Markov chain.
+            order: Order of the Markov chain.
         """
         self._chain = {}
-        self._n = n
+        self._order = order
 
     def __contains__(self, present_state):
         """Returns whether the current state is modeled by this Markov chain or
@@ -68,9 +67,9 @@ class MarkovChain(object):
         return present_state in self._chain
 
     @property
-    def n(self):
+    def order(self):
         """Order of the Markov chain."""
-        return self._n
+        return self._order
 
     def set(self, present_state, future_state, prob):
         """Adds a new link in the Markov chain.
@@ -101,12 +100,12 @@ class MarkovChain(object):
             yield (future_state, possible_outcomes[future_state])
 
     @classmethod
-    def from_file(cls, fname, n):
+    def from_file(cls, fname, order):
         """Constructs a MarkovModel from a file.
 
         Args:
             fname: File name.
-            n: Order of the Markov chain.
+            order: Order of the Markov chain.
 
         Returns:
             MarkovModel.
@@ -114,7 +113,7 @@ class MarkovChain(object):
         with open(fname) as f:
             lines = f.readlines()
 
-        chain = MarkovChain(n)
+        chain = MarkovChain(order)
         for l in lines:
             if l:
                 try:
@@ -130,20 +129,47 @@ class MarkovChain(object):
         return chain
 
 
+# File paths storing vocabulary and ngrams.
+# Index is order of the Markov chain, and value is tuple of the serialized
+# MarkovChain, and the raw data file.
+_vocabulary_path = ("data/vocab.p", "data/vocab.txt")
+_ngram_paths = [
+    ("data/unigrams.p", "data/unigram_counts.txt"),
+    ("data/bigrams.p", "data/bigram_counts.txt"),
+    ("data/trigrams.p", "data/trigram_counts.txt")
+]
+
+
 def get_vocabulary():
     """Returns vocabulary to use."""
-    return Vocabulary("data/vocab.txt")
-
-
-def get_ngrams():
-    ngrams_file = "data/ngrams.p"
-    if not os.path.isfile(ngrams_file):
-        ngrams = [
-            MarkovChain.from_file("data/unigram_counts.txt", 1),
-            MarkovChain.from_file("data/bigram_counts.txt", 2),
-            MarkovChain.from_file("data/trigram_counts.txt", 3)
-        ]
-        pickle.dump(ngrams, open(ngrams_file, "wb"))
+    serialized_file, raw_file = _vocabulary_path
+    if not os.path.isfile(serialized_file):
+        vocabulary = Vocabulary(raw_file)
+        pickle.dump(vocabulary, open(serialized_file, "wb"))
     else:
-        ngrams = pickle.load(open(ngrams_file, "rb"))
+        vocabulary = pickle.load(open(serialized_file, "rb"))
+    return vocabulary
+
+
+def get_ngram(order):
+    """Returns deserialized n-gram of given order.
+
+    Args:
+        order: Order of the corresponding Markov chain.
+
+    Returns:
+        MarkovChain.
+    """
+    serialized_file, raw_file = _ngram_paths[order]
+    if not os.path.isfile(serialized_file):
+        chain = MarkovChain.from_file(raw_file, order)
+        pickle.dump(chain, open(serialized_file, "wb"))
+    else:
+        chain = pickle.load(open(serialized_file, "rb"))
+    return chain
+
+
+def get_all_ngrams():
+    """Returns a list of all available n-grams."""
+    ngrams = list(get_ngram(i) for i in range(len(_ngram_paths)))
     return ngrams

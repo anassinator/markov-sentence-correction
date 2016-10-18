@@ -100,17 +100,16 @@ class SentenceGenerator(object):
         raise RuntimeError("Could not generate any word from the given set...")
 
 
-def generate(vocabulary, generator):
+def generate(generator):
     """Generates a sentence given a sentence generator.
 
     Args:
-        vocabulary: Vocabulary to use.
         generator: Sentence generator.
 
     Returns:
         Tuple of (generated sentence, total probability).
     """
-    sentence = Sentence(vocabulary)
+    sentence = Sentence()
 
     total_prob = 1.0
     while not sentence.complete:
@@ -122,9 +121,8 @@ def generate(vocabulary, generator):
 
 
 if __name__ == "__main__":
-    vocabulary = deserializer.get_vocabulary()
     generator = SentenceGenerator(deserializer.get_all_ngrams())
 
-    sentence, total_prob = generate(vocabulary, generator)
+    sentence, total_prob = generate(generator)
     print(sentence)
     print("Probability: ", total_prob)

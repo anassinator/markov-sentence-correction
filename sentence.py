@@ -5,18 +5,13 @@ class Sentence(object):
 
     """Sentence."""
 
-    START = 153  # <s>
-    STOP = 152  # </s>
+    START = "<s>"
+    STOP = "</s>"
     LEFT_SIDED_SYMBOLS = set('"\',.-/:;<>?!)]}$%')
     RIGHT_SIDED_SYMBOLS = set('"\'-/<>([{')
 
-    def __init__(self, vocabulary):
-        """Constructs a Sentence.
-
-        Args:
-            vocabulary: Vocabulary.
-        """
-        self._vocabulary = vocabulary
+    def __init__(self):
+        "Constructs a Sentence."""
         self._word_list = [Sentence.START]
         self._sentence = ""
 
@@ -25,15 +20,14 @@ class Sentence(object):
         """Whether the sentence is complete or not."""
         return self._word_list[-1] == Sentence.STOP
 
-    def add(self, word_index):
+    def add(self, word):
         """Adds a word to the sentence.
 
         Args:
-            word_index: Index of the word from the vocabulary.
+            word: Word.
         """
-        self._word_list.append(word_index)
-        if word_index != Sentence.STOP:
-            word = self._vocabulary.get(word_index)
+        self._word_list.append(word)
+        if word != Sentence.STOP:
             if (word[0] not in Sentence.LEFT_SIDED_SYMBOLS and
                     self._sentence and
                     self._sentence[-1] not in Sentence.RIGHT_SIDED_SYMBOLS):

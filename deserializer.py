@@ -17,7 +17,8 @@ class Vocabulary(object):
         with open(fname) as f:
             lines = f.readlines()
 
-        self._dictionary = ['' for i in range(len(lines))]
+        self._set = set()
+        self._list = ['' for i in range(len(lines))]
         for l in lines:
             if l:
                 try:
@@ -27,7 +28,23 @@ class Vocabulary(object):
                 except ValueError:
                     continue
 
-                self._dictionary[index - 1] = word
+                self._list[index - 1] = word
+                self._set.add(word)
+
+    def __iter__(self):
+        """Iterates through vocabulary."""
+        return iter(self._list)
+
+    def __contains__(self, word):
+        """Returns whether the current vocabulary contains a given word or not.
+
+        Args:
+            word: Word.
+
+        Returns:
+            Whether the given word exists in this vocabulary or not.
+        """
+        return word in self._set
 
     def get(self, i):
         """Gets the i-th word in the vocabulary.
@@ -38,21 +55,23 @@ class Vocabulary(object):
         Returns:
             Word.
         """
-        return self._dictionary[i - 1]
+        return self._list[i - 1]
 
 
 class MarkovChain(object):
 
     """Markov chain."""
 
-    def __init__(self, order):
+    def __init__(self, order, vocabulary):
         """Constructs a MarkovChain.
 
         Args:
             order: Order of the Markov chain.
+            vocabulary: Vocabulary to use.
         """
         self._chain = {}
         self._order = order
+        self._vocab = vocabulary
 
     def __contains__(self, present_state):
         """Returns whether the current state is modeled by this Markov chain or
@@ -71,7 +90,7 @@ class MarkovChain(object):
         """Order of the Markov chain."""
         return self._order
 
-    def set(self, present_state, future_state, prob):
+    def _set(self, present_state, future_state, prob):
         """Adds a new link in the Markov chain.
 
         Args:
@@ -79,9 +98,12 @@ class MarkovChain(object):
             future_state: Future state.
             prob: Probability of future state given present state.
         """
-        if present_state not in self._chain:
-            self._chain[present_state] = {}
-        self._chain[present_state][future_state] = prob
+        present_words = tuple(map(self._vocab.get, present_state))
+        if present_words not in self._chain:
+            self._chain[present_words] = {}
+
+        future_word = self._vocab.get(future_state)
+        self._chain[present_words][future_word] = prob
 
     def yield_future_states(self, present_state):
         """Iterates through all possible future states given present state.
@@ -100,12 +122,13 @@ class MarkovChain(object):
             yield (future_state, possible_outcomes[future_state])
 
     @classmethod
-    def from_file(cls, fname, order):
+    def from_file(cls, fname, order, vocabulary):
         """Constructs a MarkovModel from a file.
 
         Args:
             fname: File name.
             order: Order of the Markov chain.
+            vocabulary: Vocabulary to use.
 
         Returns:
             MarkovModel.
@@ -113,7 +136,7 @@ class MarkovChain(object):
         with open(fname) as f:
             lines = f.readlines()
 
-        chain = MarkovChain(order)
+        chain = MarkovChain(order, vocabulary)
         for l in lines:
             if l:
                 try:
@@ -124,7 +147,7 @@ class MarkovChain(object):
                 except ValueError:
                     continue
 
-                chain.set(present_state, future_state, prob)
+                chain._set(present_state, future_state, prob)
 
         return chain
 
@@ -162,7 +185,8 @@ def get_ngram(order):
     """
     serialized_file, raw_file = _ngram_paths[order]
     if not os.path.isfile(serialized_file):
-        chain = MarkovChain.from_file(raw_file, order)
+        vocabulary = get_vocabulary()
+        chain = MarkovChain.from_file(raw_file, order, vocabulary)
         pickle.dump(chain, open(serialized_file, "wb"))
     else:
         chain = pickle.load(open(serialized_file, "rb"))

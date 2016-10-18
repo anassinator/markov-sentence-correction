@@ -177,6 +177,8 @@ def get_vocabulary():
 def get_ngram(order):
     """Returns deserialized n-gram of given order.
 
+    Note: The order of an n-gram is n - 1.
+
     Args:
         order: Order of the corresponding Markov chain.
 

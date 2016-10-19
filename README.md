@@ -6,13 +6,7 @@ Artificial Intelligence course. Details can be found
 
 # Setup
 
-To run this, all one needs is Python 3.4 or above and `pip3`.
-
-To install dependencies, simply run:
-
-```bash
-pip3 install -r requirements.txt
-```
+To run this, all one needs is Python 3.4.
 
 # Details
 

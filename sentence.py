@@ -69,7 +69,6 @@ class Sentence(object):
 
         words = line.split(' ')
         sentence._word_list.extend(words)
-        sentence._word_list.append(Sentence.STOP)
         sentence._sentence = line
 
         return sentence

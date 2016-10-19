@@ -6,71 +6,114 @@ from sentence import Sentence
 from distribution import poisson_distribution
 
 
-def consecutive(iterable, n=2):
-    """Iterates through consecutive n-tuples from an iterable.
+def _correct(observed_sentence, bigrams, distribution, max_error_rate):
+    """Corrects a given sentence.
+
+    Note: The lower the max_error_rate, the faster the algorithm, but the
+          likelier it will fail.
 
     Args:
-        iterable: Iterable.
-        n: Number of elements to take at a time.
+        observed_sentence: Observed sentence.
+        bigrams: First-order Markov chain of likely word sequences.
+        distribution: Error probability distribution function.
+        max_error_rate: Maximum number of errors in a word to consider.
 
-    Yields:
-        Tuple of n consecutive items.
+    Returns:
+        Tuple of (corrected sentence, its probability).
     """
-    for n_tuple in zip(*(iterable[x:] for x in range(n))):
-        yield n_tuple
-
-
-def correct(sentence, bigrams, distribution):
     trellis = [{Sentence.START: (1.0, None)}]
 
-    observed_words = list(sentence)
+    observed_words = list(observed_sentence)
     number_of_words = len(observed_words)
 
-    for k in range(1, number_of_words - 1):
+    for k in range(1, number_of_words):
         observed_word = observed_words[k]
-        trellis.append({})
+        max_errors = len(observed_word) * max_error_rate
 
+        current_states = {}
         previous_states = trellis[k - 1]
-        current_states = trellis[k]
+        trellis.append(current_states)
 
         for previous_word in previous_states:
+            previous_prob = previous_states[previous_word][0]
+
             future_states = bigrams.yield_future_states((previous_word,))
+            for possible_word, conditional_prob in future_states:
+                # Conditional probability: P(X_k | X_k-1) * previous
+                # probability.
+                total_prob = conditional_prob * previous_prob
 
-            for possible_word, prob in future_states:
-                conditional_prob = previous_states[previous_word][0] * prob
+                # Emission probability: P(E_k | X_k).
                 distance = editdistance.eval(observed_word, possible_word)
-                total_prob = conditional_prob * distribution(distance)
+                total_prob *= distribution(distance)
 
+                # Ignore states that have too many mistakes.
+                if distance > max_errors:
+                    continue
+
+                # Only keep link of max probability.
                 if possible_word in current_states:
                     if current_states[possible_word][0] >= total_prob:
                         continue
 
                 current_states[possible_word] = (total_prob, previous_word)
 
+    # Find most likely ending.
     last_states = trellis[-1]
-    most_probable_end  = max(((word, last_states[word])
-                              for word in last_states), key=lambda x: x[1][0])
-    last_word, (total_prob, previous_word) = most_probable_end
+    end = max(((word, last_states[word])for word in last_states),
+              key=lambda x: x[1][0])
+    last_word, (total_prob, previous_word) = end
 
-    corrected_words = []
-    print(last_states)
-    for k in range(number_of_words - 2, 0, -1):
-        print(previous_word)
-        corrected_words.insert(0, previous_word)
-        previous_word = trellis[k][previous_word][1]
+    # Backtrack to find path.
+    corrected_words = [last_word]
+    for state in reversed(trellis[:-1]):
+        if previous_word and previous_word != Sentence.START:
+            corrected_words.append(previous_word)
+        previous_word = state[previous_word][1]
 
+    # Generate correct sentence.
     corrected_sentence = Sentence()
-    for word in corrected_words:
+    for word in reversed(corrected_words):
         corrected_sentence.add(word)
 
-    return (corrected_sentence, total_prob, trellis)
+    return (corrected_sentence, total_prob)
+
+
+def correct(observed_sentence, bigrams, distribution):
+    """Corrects a given sentence.
+
+    Note: This keeps trying to correct the sentence with an increasingly large
+          max error rate until it succeeds.
+
+    Args:
+        observed_sentence: Observed sentence.
+        bigrams: First-order Markov chain of likely word sequences.
+        distribution: Error probability distribution function.
+
+    Returns:
+        Tuple of (corrected sentence, its probability).
+    """
+    rate = 0.1
+    while True:
+        try:
+            return _correct(observed_sentence, bigrams, distribution, rate)
+        except ValueError:
+            rate += 0.1
+            if rate >= 3.0:
+                raise
 
 
 if __name__ == "__main__":
     bigrams = deserializer.get_ngram(order=1)
     distribution = poisson_distribution(gamma=0.01)
 
-    line = input()
-    sentence = Sentence.from_line(line.strip())
-    corrected, prob, trellis = correct(sentence, bigrams, distribution)
-    print(corrected, prob)
+    while True:
+        try:
+            line = input()
+        except (KeyboardInterrupt, EOFError):
+            break
+
+        sentence = Sentence.from_line(line.strip())
+        corrected_sentence, prob = correct(sentence, bigrams, distribution)
+        print(corrected_sentence)
+        print("Probability:", prob)

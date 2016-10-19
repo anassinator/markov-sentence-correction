@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
+import verbose
 import deserializer
 import editdistance
 from sentence import Sentence
@@ -129,6 +131,7 @@ if __name__ == "__main__":
     bigrams = deserializer.get_ngram(order=1)
     distribution = poisson_distribution(gamma=0.01)
 
+    verbose_output = verbose.is_verbose()
     while True:
         try:
             line = input()
@@ -138,5 +141,8 @@ if __name__ == "__main__":
         sentence = Sentence.from_line(line.strip())
         corrected_sentence, prob = correct(sentence, bigrams, distribution)
         print(corrected_sentence)
-        print("Probability:", prob)
-        print("Total distance:", total_distance(sentence, corrected_sentence))
+
+        if verbose_output:
+            distance = total_distance(sentence, corrected_sentence)
+            print("probability:", prob)
+            print("total distance:", distance)

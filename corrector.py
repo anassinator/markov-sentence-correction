@@ -103,6 +103,28 @@ def correct(observed_sentence, bigrams, distribution):
                 raise
 
 
+def total_distance(observed_sentence, corrected_sentence):
+    """Calculates the total distance between the two given sentences.
+
+    Args:
+        observed_sentence: Observed sentence.
+        corrected_sentence: Corrected sentence.
+
+    Returns:
+        Total Levenshtein distance between the two sentences.
+    """
+    total_distance = 0
+
+    observed_words = list(observed_sentence)
+    corrected_words = list(corrected_sentence)
+
+    for i in range(len(observed_words)):
+        comparable_words = observed_words[i], corrected_words[i]
+        total_distance += editdistance.eval(*comparable_words)
+
+    return total_distance
+
+
 if __name__ == "__main__":
     bigrams = deserializer.get_ngram(order=1)
     distribution = poisson_distribution(gamma=0.01)
@@ -117,3 +139,4 @@ if __name__ == "__main__":
         corrected_sentence, prob = correct(sentence, bigrams, distribution)
         print(corrected_sentence)
         print("Probability:", prob)
+        print("Total distance:", total_distance(sentence, corrected_sentence))

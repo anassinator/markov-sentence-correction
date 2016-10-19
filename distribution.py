@@ -25,6 +25,6 @@ def poisson_distribution(gamma):
         Returns:
             The probability of k events occuring in the given distribution.
         """
-        return constant_factor * gamma ** k / math.factorial(k)
+        return (constant_factor * gamma ** k) / (math.factorial(k))
 
     return probability

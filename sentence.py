@@ -9,11 +9,24 @@ class Sentence(object):
     STOP = "</s>"
     LEFT_SIDED_SYMBOLS = set('"\',.-/:;<>?!)]}$%')
     RIGHT_SIDED_SYMBOLS = set('"\'-/<>([{')
+    SYMBOLS = LEFT_SIDED_SYMBOLS.union(RIGHT_SIDED_SYMBOLS)
 
     def __init__(self):
         "Constructs a Sentence."""
         self._word_list = [Sentence.START]
         self._sentence = ""
+
+    def __str__(self):
+        """Returns a string representation of the sentence."""
+        return self._sentence
+
+    def __len__(self):
+        """Returns the number of words in a sentence."""
+        return len(self._word_list)
+
+    def __iter__(self):
+        """Iterates through the sentence word by word."""
+        return iter(self._word_list)
 
     @property
     def complete(self):
@@ -42,10 +55,21 @@ class Sentence(object):
         """
         return tuple(self._word_list[-n:])
 
-    def __str__(self):
-        """Returns a string representation of the sentence."""
-        return self._sentence
+    @classmethod
+    def from_line(self, line):
+        """Constructs a Sentence from a line of text.
 
-    def __len__(self):
-        """Returns the number of words in a sentence."""
-        return len(self._word_list)
+        Args:
+            line: Line of text.
+
+        Returns:
+            Sentence.
+        """
+        sentence = Sentence()
+
+        words = line.split(' ')
+        sentence._word_list.extend(words)
+        sentence._word_list.append(Sentence.STOP)
+        sentence._sentence = line
+
+        return sentence

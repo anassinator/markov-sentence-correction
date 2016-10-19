@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import random
+import verbose
 import deserializer
 from sentence import Sentence
 
@@ -123,6 +124,9 @@ def generate(generator):
 if __name__ == "__main__":
     generator = SentenceGenerator(deserializer.get_all_ngrams())
 
+    verbose_output = verbose.is_verbose()
+
     sentence, total_prob = generate(generator)
     print(sentence)
-    print("Probability: ", total_prob)
+    if verbose_output:
+        print("probability:", total_prob)

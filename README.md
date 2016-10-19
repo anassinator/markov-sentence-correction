@@ -22,6 +22,8 @@ To run, simply execute:
 python3 generator.py
 ```
 
+More detailed output can be displayed using th e `-v` or `--verbose` flags.
+
 ## Sentence Correction
 
 Sentence are corrected using a Hidden Markov Model (HMM) and Viterbi's
@@ -38,5 +40,14 @@ Input can also be piped in as follows:
 
 ```bash
 echo "Tell moi" | python3 corrector.py
-# outputs: Tell me
+# Tell me
 ```
+
+More detailed output can be displayed using th e `-v` or `--verbose` flags.
+
+## Accuracy
+
+Note that the accuracy of both the sentences generated and the corrections is
+only dependent on the data set used. Valid English words will be "corrected"
+if they are not found in the data set. Take a look [here](data) for details on
+how to use your own dataset.

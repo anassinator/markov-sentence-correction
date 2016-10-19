@@ -8,6 +8,35 @@ from sentence import Sentence
 from distribution import poisson_distribution
 
 
+def _backtrack_path(trellis, last_word):
+    """Finds the complete sentence and its probability from a Trellis graph.
+
+    Args:
+        trellis: Trallis graph.
+        last_word: End word.
+
+    Returns:
+        Tuple of (sentence, probability).
+    """
+    total_prob, previous_word = trellis[-1][last_word]
+    previous_prob = total_prob
+
+    word_path = [last_word]
+    individual_probabilities = []
+    for state in reversed(trellis[:-1]):
+        if previous_word and previous_word != Sentence.START:
+            word_path.append(previous_word)
+            individual_probabilities.insert(0, previous_prob)
+        previous_prob, previous_word = state[previous_word]
+
+    # Generate correct sentence.
+    sentence_path = Sentence()
+    for word in reversed(word_path):
+        sentence_path.add(word)
+
+    return (sentence_path, total_prob, individual_probabilities)
+
+
 def _correct(observed_sentence, bigrams, distribution, max_error_rate):
     """Corrects a given sentence.
 
@@ -21,7 +50,8 @@ def _correct(observed_sentence, bigrams, distribution, max_error_rate):
         max_error_rate: Maximum number of errors in a word to consider.
 
     Returns:
-        Tuple of (corrected sentence, its probability).
+        Ordered list of tuples of (corrected sentence, its probability).
+        Most likely interpretations come first.
     """
     trellis = [{Sentence.START: (1.0, None)}]
 
@@ -30,7 +60,7 @@ def _correct(observed_sentence, bigrams, distribution, max_error_rate):
 
     for k in range(1, number_of_words):
         observed_word = observed_words[k]
-        max_errors = len(observed_word) * max_error_rate
+        max_errors = int(len(observed_word) * max_error_rate) + 1
 
         current_states = {}
         previous_states = trellis[k - 1]
@@ -61,24 +91,10 @@ def _correct(observed_sentence, bigrams, distribution, max_error_rate):
                 current_states[possible_word] = (total_prob, previous_word)
 
     # Find most likely ending.
-    last_states = trellis[-1]
-    end = max(((word, last_states[word])for word in last_states),
-              key=lambda x: x[1][0])
-    last_word, (total_prob, previous_word) = end
+    interpretations = list(_backtrack_path(trellis, x) for x in trellis[-1])
+    interpretations.sort(key=lambda x: x[1], reverse=True)
 
-    # Backtrack to find path.
-    corrected_words = [last_word]
-    for state in reversed(trellis[:-1]):
-        if previous_word and previous_word != Sentence.START:
-            corrected_words.append(previous_word)
-        previous_word = state[previous_word][1]
-
-    # Generate correct sentence.
-    corrected_sentence = Sentence()
-    for word in reversed(corrected_words):
-        corrected_sentence.add(word)
-
-    return (corrected_sentence, total_prob)
+    return interpretations
 
 
 def correct(observed_sentence, bigrams, distribution):
@@ -93,16 +109,20 @@ def correct(observed_sentence, bigrams, distribution):
         distribution: Error probability distribution function.
 
     Returns:
-        Tuple of (corrected sentence, its probability).
+        Ordered list of tuples of (corrected sentence, its probability).
+        Most likely interpretations come first.
     """
     rate = 0.1
     while True:
         try:
-            return _correct(observed_sentence, bigrams, distribution, rate)
+            results = _correct(observed_sentence, bigrams, distribution, rate)
         except ValueError:
-            rate += 0.1
-            if rate >= 3.0:
-                raise
+            pass
+        if results:
+            return results
+        rate += 0.1
+        if rate >= 3.0:
+            return []
 
 
 def total_distance(observed_sentence, corrected_sentence):
@@ -139,10 +159,23 @@ if __name__ == "__main__":
             break
 
         sentence = Sentence.from_line(line.strip())
-        corrected_sentence, prob = correct(sentence, bigrams, distribution)
-        print(corrected_sentence)
+        interpretations = correct(sentence, bigrams, distribution)
+        (corrected, total_prob, individual_prob), *others = interpretations
+        print(corrected)
 
         if verbose_output:
-            distance = total_distance(sentence, corrected_sentence)
-            print("probability:", prob)
+            distance = total_distance(sentence, corrected)
             print("total distance:", distance)
+            print("total probability:", total_prob)
+            print("word-by-word probabilities:", *individual_prob)
+
+            if others:
+                print("other possible interpretations:")
+            for i, (possibility, prob, _) in enumerate(others):
+                # Only print out the top 3 possibilities.
+                if i >= 3:
+                    break
+
+                distance = total_distance(sentence, possibility)
+                print(str(possibility),
+                      "(probability: {}, distance: {})".format(prob, distance))

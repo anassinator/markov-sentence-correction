@@ -2,7 +2,7 @@
 
 This is a submission to the second assignment of McGill University's ECSE 526 -
 Artificial Intelligence course. Details can be found
-[here](http://www.cim.mcgill.ca/~jer/courses/ai/assignments/as2.html).
+[here](https://github.com/anassinator/markov-sentence-correction/files/1595010/as2.pdf).
 
 # Setup
 
